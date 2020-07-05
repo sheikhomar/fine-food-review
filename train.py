@@ -1,12 +1,13 @@
 import json
 
 import numpy as np
+from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import (
-    Dropout, Embedding, Flatten, Dense, LSTM, Bidirectional
+    Dropout, Embedding, Flatten, Dense, LSTM
 )
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import RMSprop
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow_core.python.keras.callbacks import ModelCheckpoint
 
 
 def run():
@@ -43,7 +44,12 @@ def run():
     )
 
     early_stop = EarlyStopping(monitor='val_loss', min_delta=0.01, patience=5, verbose=2)
-    model.fit(X_train, y_train, epochs=50, batch_size=64, validation_split=0.2, callbacks=[early_stop])
+    filepath = 'data/saved-model-{epoch:02d}-{val_loss:.2f}.hdf5'
+
+    checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='max')
+    model.fit(X_train, y_train, epochs=50, batch_size=256, validation_split=0.3,
+              callbacks=[early_stop, checkpoint]
+              )
 
     print('Done')
 
