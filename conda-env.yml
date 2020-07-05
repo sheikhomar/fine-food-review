@@ -12,6 +12,7 @@ dependencies:
   - jupyterlab
   - tensorflow-gpu=2.1
   - nltk
+  - gensim
   - pip
   - pip:
     - kaggle

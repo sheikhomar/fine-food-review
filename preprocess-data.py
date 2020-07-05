@@ -11,10 +11,13 @@ from nltk.tokenize import word_tokenize
 
 import sqlite3
 from timeit import default_timer as timer
-
-
+from gensim.corpora import Dictionary
 
 # https://towardsdatascience.com/text-preprocessing-steps-and-universal-pipeline-94233cb6725a
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+
+
 class TextPreprocessor(BaseEstimator, TransformerMixin):
     def __init__(self,
                  variety="BrE",
@@ -107,17 +110,41 @@ def run():
     df_data.drop_duplicates(keep='first', inplace=True)
     print(f'Dropped duplicated. Number of reviews: {df_data.shape[0]:n}.')
 
-    preprocessor = TextPreprocessor(n_jobs=4)
+    df_data['Sentiment'] = df_data['Score'].map(lambda score: 1 if score > 3 else 0)
 
+    df_data = df_data[:1000]  # TODO: Remove this!
+
+    X = df_data['Text']
+    y = df_data['Sentiment']
+
+    print('Preprocessing data')
+    preprocessor = TextPreprocessor(n_jobs=4)
     start_time = timer()
-    text = preprocessor.transform(df_data[:100000]['Text'])
+    X = preprocessor.transform(X)
     end_time = timer()
     duration_secs = end_time - start_time
     print(f'Preprocessing time: {duration_secs:0.2f} secs.')
 
-    # print(text)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, shuffle=True, stratify=y, random_state=42,
+    )
 
-    df_data['Sentiment'] = df_data['Score'].map(lambda score: 1 if score > 3 else 0)
+    print(f'Number of training samples: {X_train.shape[0]}. Number of test samples: {X_test.shape[0]}')
+
+    train_docs = X_train.to_numpy()
+
+    vocab = Dictionary()
+    vocab.add_documents([['UNK']])
+    vocab.add_documents(train_docs)
+    vocab.save('data/processed/train-vocab-gensim-dict')
+
+    print(vocab)
+
+    # Map UNK tokens to 0.
+    indices = vocab.doc2idx(train_docs[0], unknown_word_index=-1)
+    indices = [idx + 1 for idx in indices]
+
+    print(indices)
 
     print('Done')
 
