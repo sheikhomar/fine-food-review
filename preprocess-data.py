@@ -9,6 +9,14 @@ import re
 import nltk
 from nltk.tokenize import word_tokenize
 
+import tensorflow as tf
+from tensorflow.keras.layers import (
+    ReLU, Dropout, Embedding, Flatten, Dense,
+)
+from tensorflow.keras.optimizers import RMSprop, Adam
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
 import sqlite3
 from timeit import default_timer as timer
 from gensim.corpora import Dictionary
@@ -92,7 +100,7 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
         return tokens
 
 
-def run():
+def get_preprocessed_data():
     print('Downloading NLTK stop words')
     nltk.download('stopwords')
 
@@ -125,26 +133,56 @@ def run():
     duration_secs = end_time - start_time
     print(f'Preprocessing time: {duration_secs:0.2f} secs.')
 
+    return X, y
+
+
+def docs_to_indices(docs, max_doc_len, vocab):
+    N = docs.shape[0]
+
+    docs_indices = np.zeros((N, max_doc_len))
+    for i, doc in enumerate(docs):
+        # Reserve index 0 for EOF, and index 1 for the UKNOWN token.
+        indices = vocab.doc2idx(doc, unknown_word_index=-1)
+        indices = [[idx + 2 for idx in indices]]
+        padded_indices = pad_sequences(indices, maxlen=max_doc_len, value=0, padding='post')
+        docs_indices[i] = padded_indices
+
+    return docs_indices
+
+
+def run():
+    X, y = get_preprocessed_data()
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, shuffle=True, stratify=y, random_state=42,
     )
 
+    print(X_train)
+
     print(f'Number of training samples: {X_train.shape[0]}. Number of test samples: {X_test.shape[0]}')
+
+    max_doc_len = X_train.map(lambda tokens: len(tokens)).max()
+    print(f'Max document length: {max_doc_len}')
 
     train_docs = X_train.to_numpy()
 
     vocab = Dictionary()
-    vocab.add_documents([['UNK']])
     vocab.add_documents(train_docs)
     vocab.save('data/processed/train-vocab-gensim-dict')
 
     print(vocab)
 
-    # Map UNK tokens to 0.
-    indices = vocab.doc2idx(train_docs[0], unknown_word_index=-1)
-    indices = [idx + 1 for idx in indices]
+    vocab_size = len(vocab) + 2
+    embed_dim = 300
+    print(f'Vocab size: {vocab_size}')
 
-    print(indices)
+    X_train_indices = docs_to_indices(X_train, max_doc_len, vocab)
+    np.save('data/processed/X_train.npy', X_train_indices)
+    np.save('data/processed/y_train.npy', y_train.to_numpy())
+
+    X_test_indices = docs_to_indices(X_test, max_doc_len, vocab)
+    np.save('data/processed/X_test.npy', X_test_indices)
+    np.save('data/processed/y_test.npy', y_test.to_numpy())
 
     print('Done')
 
