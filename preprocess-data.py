@@ -40,10 +40,10 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
         self.stop_words = set(nltk.corpus.stopwords.words('english'))
 
         stemmer = nltk.PorterStemmer()
-        self._stem_tokens = np.vectorize(stemmer.stem)
+        self._stem_tokens = np.vectorize(stemmer.stem, otypes=[np.str])
 
         lemmatizer = nltk.WordNetLemmatizer()
-        self._lemmatize_tokens = np.vectorize(lemmatizer.lemmatize)
+        self._lemmatize_tokens = np.vectorize(lemmatizer.lemmatize, otypes=[np.str])
 
     def fit(self, X, y=None):
         return self
@@ -82,8 +82,8 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
         tokens = word_tokenize(cleaned_text.lower())
 
         # Remove inflections of words
-        # tokens = self._stem_tokens(tokens)
-        tokens = self._lemmatize_tokens(tokens)
+        tokens = self._stem_tokens(tokens)
+        # tokens = self._lemmatize_tokens(tokens)
 
         # Remove stop words
         tokens = [t for t in tokens if t not in self.stop_words]
@@ -110,8 +110,6 @@ def get_preprocessed_data():
 
     df_data['Sentiment'] = df_data['Score'].map(lambda score: 1 if score > 3 else 0)
 
-    df_data = df_data[:1000]  # TODO: Remove this!
-
     X = df_data['Text']
     y = df_data['Sentiment']
 
@@ -134,7 +132,10 @@ def docs_to_indices(docs, max_doc_len, vocab):
         # Reserve index 0 for EOF, and index 1 for the UKNOWN token.
         indices = vocab.doc2idx(doc, unknown_word_index=-1)
         indices = [[idx + 2 for idx in indices]]
-        padded_indices = pad_sequences(indices, maxlen=max_doc_len, value=0, padding='post')
+        padded_indices = pad_sequences(
+            indices, maxlen=max_doc_len, value=0,
+            padding='post', truncating='post'
+        )
         docs_indices[i] = padded_indices
 
     return docs_indices
