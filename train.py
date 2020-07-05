@@ -2,10 +2,11 @@ import json
 
 import numpy as np
 from tensorflow.keras.layers import (
-    Dropout, Embedding, Flatten, Dense,
+    Dropout, Embedding, Flatten, Dense, LSTM, Bidirectional
 )
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.callbacks import EarlyStopping
 
 
 def run():
@@ -19,8 +20,8 @@ def run():
     train_data = np.load('data/processed/train.npz')
     X_train, y_train = train_data['X'], train_data['y']
 
-    test_data = np.load('data/processed/test.npz')
-    X_test, y_test = test_data['X'], test_data['y']
+    # test_data = np.load('data/processed/test.npz')
+    # X_test, y_test = test_data['X'], test_data['y']
 
     model = Sequential()
     model.add(Embedding(input_dim=vocab_size, output_dim=embed_dim, input_length=max_doc_len))
@@ -31,9 +32,13 @@ def run():
 
     print(model.summary())
 
-    model.compile(optimizer=RMSprop(lr=1e-3), loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(
+        optimizer=RMSprop(lr=1e-3), loss='binary_crossentropy',
+        metrics=['accuracy']
+    )
 
-    model.fit(X_train, y_train, epochs=10, batch_size=64, validation_data=(X_test, y_test))
+    early_stop = EarlyStopping(monitor='val_loss', min_delta=0.01, patience=5, verbose=2)
+    model.fit(X_train, y_train, epochs=50, batch_size=64, validation_split=0.2, callbacks=[early_stop])
 
     print('Done')
 
