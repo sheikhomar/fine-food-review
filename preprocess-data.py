@@ -1,29 +1,17 @@
-import numpy as np
+import json
 import multiprocessing as mp
-
-import string
-from sklearn.base import TransformerMixin, BaseEstimator
-import pandas as pd
 import re
-
-import nltk
-from nltk.tokenize import word_tokenize
-
-import tensorflow as tf
-from tensorflow.keras.layers import (
-    ReLU, Dropout, Embedding, Flatten, Dense,
-)
-from tensorflow.keras.optimizers import RMSprop, Adam
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-
 import sqlite3
 from timeit import default_timer as timer
-from gensim.corpora import Dictionary
 
-# https://towardsdatascience.com/text-preprocessing-steps-and-universal-pipeline-94233cb6725a
+import nltk
+import numpy as np
+import pandas as pd
+from gensim.corpora import Dictionary
+from nltk.tokenize import word_tokenize
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 
 class TextPreprocessor(BaseEstimator, TransformerMixin):
@@ -41,6 +29,8 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
         variety - format of date (AmE - american type, BrE - british format)
         user_abbrevs - dict of user abbreviations mappings (from normalise package)
         n_jobs - parallel jobs to run
+
+        Source: https://towardsdatascience.com/text-preprocessing-steps-and-universal-pipeline-94233cb6725a
         """
         self.variety = variety
         self.user_abbrevs = user_abbrevs
@@ -92,7 +82,8 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
         tokens = word_tokenize(cleaned_text.lower())
 
         # Remove inflections of words
-        tokens = self._stem_tokens(tokens)
+        # tokens = self._stem_tokens(tokens)
+        tokens = self._lemmatize_tokens(tokens)
 
         # Remove stop words
         tokens = [t for t in tokens if t not in self.stop_words]
@@ -101,11 +92,10 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
 
 
 def get_preprocessed_data():
-    print('Downloading NLTK stop words')
+    print('Downloading NLTK resources')
     nltk.download('stopwords')
-
-    print('Downloading punkt')
     nltk.download('punkt')
+    nltk.download('wordnet')
 
     print('Conneting to SQLite')
     conn = sqlite3.connect("data/raw/database.sqlite")
@@ -176,13 +166,27 @@ def run():
     embed_dim = 300
     print(f'Vocab size: {vocab_size}')
 
+    print('Converting training texts to indices...')
     X_train_indices = docs_to_indices(X_train, max_doc_len, vocab)
-    np.save('data/processed/X_train.npy', X_train_indices)
-    np.save('data/processed/y_train.npy', y_train.to_numpy())
 
+    print(' - Persisting to disk...')
+    np.savez_compressed('data/processed/train.npz', X=X_train_indices, y=y_train.to_numpy())
+
+    print('Converting tests texts to indices...')
     X_test_indices = docs_to_indices(X_test, max_doc_len, vocab)
-    np.save('data/processed/X_test.npy', X_test_indices)
-    np.save('data/processed/y_test.npy', y_test.to_numpy())
+
+    print(' - Persisting to disk...')
+    np.savez_compressed('data/processed/test.npz', X=X_test_indices, y=y_test.to_numpy())
+
+    data_info = {
+        'vocab_size': vocab_size,
+        'max_doc_len': int(max_doc_len),
+        'train_size': len(X_train),
+        'test_size': len(X_test),
+    }
+
+    with open('data/processed/data-info.json', 'w') as f:
+        json.dump(data_info, f, indent=2)
 
     print('Done')
 
