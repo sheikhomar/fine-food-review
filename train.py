@@ -13,6 +13,8 @@ def run():
     with open('data/processed/data-info.json', 'r') as f:
         data_info = json.load(f)
 
+    lstm = True
+
     vocab_size = data_info['vocab_size']
     max_doc_len = data_info['max_doc_len']
     embed_dim = 300
@@ -25,9 +27,12 @@ def run():
 
     model = Sequential()
     model.add(Embedding(input_dim=vocab_size, output_dim=embed_dim, input_length=max_doc_len))
-    model.add(Flatten())
-    model.add(Dense(16, activation='relu'))
-    model.add(Dropout(0.50))
+    if lstm:
+        model.add(LSTM(16))
+    else:
+        model.add(Flatten())
+        model.add(Dense(16, activation='relu'))
+        model.add(Dropout(0.50))
     model.add(Dense(1, activation='sigmoid'))
 
     print(model.summary())
