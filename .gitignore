@@ -1,0 +1,8 @@
+__pycache__
+data
+runs
+.idea
+*.log
+.ipynb_checkpoints
+.vscode
+experiments

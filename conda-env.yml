@@ -1,0 +1,17 @@
+name: ffr
+channels:
+  - defaults
+  - conda-forge
+  - anaconda
+dependencies:
+  - python=3.7
+  - numpy
+  - pandas
+  - scikit-learn
+  - seaborn
+  - jupyterlab
+  - tensorflow-gpu=2.1
+  - nltk
+  - pip
+  - pip:
+    - kaggle
