@@ -133,8 +133,7 @@ def docs_to_indices(docs, max_doc_len, vocab):
         indices = vocab.doc2idx(doc, unknown_word_index=-1)
         indices = [[idx + 2 for idx in indices]]
         padded_indices = pad_sequences(
-            indices, maxlen=max_doc_len, value=0,
-            padding='post', truncating='post'
+            indices, maxlen=max_doc_len, value=0
         )
         docs_indices[i] = padded_indices
 
@@ -159,7 +158,7 @@ def run():
 
     vocab = Dictionary()
     vocab.add_documents(train_docs)
-    vocab.save('data/processed/train-vocab-gensim-dict')
+    vocab.save('data/processed/train-vocab-gensim-dict_v2')
 
     print(vocab)
 
@@ -171,13 +170,13 @@ def run():
     X_train_indices = docs_to_indices(X_train, max_doc_len, vocab)
 
     print(' - Persisting to disk...')
-    np.savez_compressed('data/processed/train.npz', X=X_train_indices, y=y_train.to_numpy())
+    np.savez_compressed('data/processed/train_v2.npz', X=X_train_indices, y=y_train.to_numpy())
 
     print('Converting tests texts to indices...')
     X_test_indices = docs_to_indices(X_test, max_doc_len, vocab)
 
     print(' - Persisting to disk...')
-    np.savez_compressed('data/processed/test.npz', X=X_test_indices, y=y_test.to_numpy())
+    np.savez_compressed('data/processed/test_v2.npz', X=X_test_indices, y=y_test.to_numpy())
 
     data_info = {
         'vocab_size': vocab_size,
